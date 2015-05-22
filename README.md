@@ -4,15 +4,19 @@ Maintain dns records for connecting openvpn clients
 
 # Features
 
-- generate PTR/AAAA/A records from `common_name` of the client cert
-  and internal or external ip addresses using `nsupdate`
+- generate PTR/AAAA/A records using `common_name` of the client certifcate
+  and both internal or external ip addresses using `nsupdate`
 - support for private key
 - supports multiple forward and reverse zones and
   pick the first matching ip address or `common_name`
 
 # Usage
 
-1. Install Ruby
+The following text assumes, that an openvpn server with client certificates,
+as described in the [openvpn documentation](https://openvpn.net/index.php/open-source/documentation/miscellaneous/77-rsa-key-management.html)
+and a nameserver which supports update via nsupdate such as [bind](https://www.isc.org/downloads/bind/).
+
+1. Install Ruby and nsupdate
 
 2. Clone Project
 
@@ -28,30 +32,37 @@ $ cp /etc/openvpn/ddns/openvpn-ddns.json.example /etc/openvpn/openvpn-ddns.json
 ```
 
 In case you have multiple openvpn server you can also create a configuration per
-profile
+profile:
 
 ```
 $ cp /etc/openvpn/ddns/openvpn-ddns.json.example /etc/openvpn/server1.openvpn-ddns.json
 $ cp /etc/openvpn/ddns/openvpn-ddns.json.example /etc/openvpn/server2.openvpn-ddns.json
 ```
 
-where `server1` or `server2` is the name of the openvpn configuration file without the
+where `server1` or `server2` is the name of the openvpn configuration files without the
 `.config/.ovpn` extension.
+
+the configuration takes the following following keys:
+
+| Key                     | Type     | Description                                                                                            |
+| ----------------------- | -------- | ------------------------------------------------------------------------------------------------------ |
+| name_server             | string   | (required) hostname or ip address to nameserver                                                        |
+| nsupdate_executable     | string   | (optional) path or name of nsupdate (Defaults to "nsupdate")                                           |
+| private_key_file        | string   | (optional) If set, this will be used by nsupdate to authenticate against nameserver                    |
+| reverse_zones           | array    | (optional) list of reverse zones, which are matched against public/private openvpn client ip. If the ip is contained in one of the provided reverse zones, the PTR records will be updated using the common_name as value. |
+| private_zones           | array    | (optional) list of zones, which are matched against the common_name field of the client certificate. If one zone is a suffix of the common_name, a A or AAAA records are updated using the internal ip address as value. |
+| private_search_domain   | string   | (optional) if set and non of the private zones matched, openvpn-ddns will fallback to this domain. The record will be build from the host part of `common_name`. |
+| public_zones            | array    | list of zones, which are matched against the common_name field of the client certificate. If one zone is a suffix of the common_name, a A or AAAA records are updated using the public ip address as value. |
+| public_search_domain    | string   | (optional) if set and non of the public zones matched, openvpn-ddns will fallback to this domain.  The record will be build from the host part of `common_name`. |
+
 
 4. Run openvpn
 
-Either
+Add the following lines to you openvpn server configuration.
 
 ```
-$ openvpn --script-security 2 --learn-address /etc/openvpn/ddns/openvpn-ddns --conf server.conf
-```
-
-or
-
-```
-$ echo "learn-address /etc/openvpn/ddns/openvpn-ddns"  >> server.conf
-$ echo "script-security 2"  >> server.conf
-$ openvpn --conf server.conf
+learn-address /etc/openvpn/ddns/openvpn-ddns
+script-security 2
 ```
 
 At the moment only `tun` mode of openvpn is supported.
