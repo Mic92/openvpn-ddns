@@ -1,0 +1,268 @@
+#!/usr/bin/env ruby
+
+require 'json'
+require 'tempfile'
+require 'ipaddr'
+
+class Configuration
+  def initialize(config_file)
+    begin
+      json = JSON.load(File.open(config_file))
+    rescue => e
+      abort "Failed to load configuration: #{e}"
+    end
+    abort "configuration is empty" if json.nil? or json == ""
+    data = json["nsupdate"] or abort "no 'nsupdate' object found in configuration"
+    abort "'nsupdate' should be an object" unless data.is_a? Hash
+    @name_server   = assert_type(data, "name_server", String) or
+      abort "no 'name_server' specified in configuration"
+    @private_key_file      = assert_type(data, "private_key_file", String)
+    @public_zones          = assert_type(data, "public_zones", Array) || []
+    @private_zones         = assert_type(data, "private_zones", Array) || []
+    @public_search_domain  = assert_type(data, "public_search_domain", String)
+    @private_search_domain = assert_type(data, "private_search_domain", String)
+    reverse_zones          = assert_type(data, "reverse_zones", Array) || []
+    @nsupdate_executable   = assert_type(data, "nsupdate_executable", String)
+
+    @v4_reverse_zones = []
+    @v6_reverse_zones = []
+
+    reverse_zones.each do |zone|
+      if zone.end_with?("in-addr.arpa")
+        @v4_reverse_zones << zone
+      elsif zone.end_with?("ip6.arpa")
+        @v6_reverse_zones << zone
+      else
+        abort "invalid reverse zone #{zone}"
+      end
+    end
+  end
+
+  def assert_type(data, key, type)
+    val = data[key]
+    unless val.nil? or val.is_a?(type)
+      abort "key '#{key}' should be an #{type.to_s.downcase}"
+    end
+    val
+  end
+  attr_reader :name_server,
+    :private_key_file,
+    :nsupdate_executable,
+    :private_zones,
+    :public_zones,
+    :private_search_domain,
+    :public_search_domain,
+    :v4_reverse_zones,
+    :v6_reverse_zones
+end
+
+class Nsupdate
+  def initialize(config)
+    @config = config
+  end
+
+  def remove_record(private_ip, public_ip, common_name)
+    change_record(private_ip, public_ip, common_name, false)
+  end
+
+  def add_record(private_ip, public_ip, common_name)
+    change_record(private_ip, public_ip, common_name, true)
+  end
+
+  private
+
+  def change_record(private_ip, public_ip, common_name, add)
+    transaction = []
+
+    transaction += forward_entry(private_ip,
+                                 common_name,
+                                 @config.private_zones,
+                                 @config.private_search_domain,
+                                 add)
+    transaction += reverse_entry(private_ip, common_name, add)
+
+    if public_ip
+      transaction += forward_entry(public_ip,
+                                   common_name,
+                                   @config.public_zones,
+                                   @config.public_search_domain,
+                                   add)
+      transaction += reverse_entry(public_ip, common_name, add)
+    end
+
+    return if transaction.empty?
+
+    nsupdate(
+      ["server #{@config.name_server}"] +
+      transaction +
+      ["send"]
+    )
+  end
+
+  def forward_entry(ip, common_name, zones, search_domain, add)
+    transaction = []
+
+    zone, domain = find_zone(common_name, zones, search_domain)
+
+    unless zone.nil?
+      transaction << "zone #{zone}"
+      transaction << "update delete #{domain}. #{rtype(ip)}"
+      if add
+        transaction << "update add #{domain}. 3600 #{rtype(ip)} #{ip.to_string}"
+      end
+    end
+    transaction
+  end
+
+  def reverse_entry(ip, common_name, add)
+    transaction = []
+
+    reverse_zone = find_reverse_zone(ip)
+    unless reverse_zone.nil?
+      transaction << "zone #{reverse_zone}"
+      transaction << "update delete #{ip.reverse}. PTR"
+
+      if add
+        transaction << "update add #{ip.reverse}. 3600 PTR #{common_name}"
+      end
+    end
+    transaction
+  end
+
+  def find_reverse_zone(ip)
+    reverse_zones = if ip.ipv4?
+                      @config.v4_reverse_zones
+                    else
+                      @config.v6_reverse_zones
+                    end
+
+    reverse_zones.each do |zone|
+      if ip.reverse.end_with?(zone)
+        return zone
+      end
+    end
+    nil
+  end
+
+  def find_zone(name, zones, search_domain)
+    name = normalize(name)
+    zones.each do |zone|
+      zone = normalize(zone)
+      if name.end_with?(zone)
+        return zone, name
+      end
+    end
+    unless search_domain.nil?
+      zone = normalize(search_domain)
+      hostpart = name[/^[^.]+/]
+      return zone, "#{hostpart}.#{zone}"
+    end
+    nil
+  end
+
+  def normalize(s)
+    # remove leading/trailing dots
+    # remove characters not allowed in fqdn
+    s.gsub(/^\.|\.$|[^a-zA-Z\-.]+/, "")
+  end
+
+  def rtype(ip)
+    if ip.ipv6?
+      "AAAA"
+    else
+      "A"
+    end
+  end
+
+  def nsupdate(zone)
+    file = Tempfile.new('nsupdate')
+
+    cmd = [@config.nsupdate_executable || "nsupdate"]
+
+    if @config.private_key_file
+      cmd += ["-k", @config.private_key_file]
+    end
+
+    file.puts(zone.join("\n"))
+    file.close
+
+    cmd << file.path
+    puts(cmd.join(" "))
+    puts(zone.join("\n"))
+    system(cmd)
+  rescue
+    unless file.nil?
+      file.close
+      file.unlink
+    end
+  end
+end
+
+def find_config
+  script_dir = File.dirname(__FILE__)
+
+  lookup_paths = [
+    "openvpn-ddns.json",
+    File.join(script_dir, "openvpn-ddns.json"),
+    "/etc/openvpn/openvpn-ddns.json",
+    "/usr/local/etc/openvpn/openvpn-ddns.json"
+  ]
+
+  openvpn_config = ENV["config"]
+  if openvpn_config
+    basename = File.basename(openvpn_config)
+    stripped = basename.gsub(/\.(ovpn|config)/, "")
+    config_name = "#{stripped}.openvpn-ddns.json"
+    lookup_paths = [
+      config_name,
+      File.join(script_dir, config_name),
+      File.join("/etc/openvpn/", config_name),
+      File.join("/usr/local/etc/openvpn/", config_name)
+    ] + lookup_paths
+  end
+
+  lookup_paths.map! {|p| File.expand_path(p) }
+
+  lookup_paths.each do |path|
+    return path if File.exists?(path)
+  end
+
+  abort "configuration not found, tried the following paths:\n#{lookup_paths.join("\n")}"
+end
+
+def main
+  config_file = find_config
+  config = Configuration.new(config_file)
+
+  if ARGV.size < 3
+    abort "USAGE: #{$0} (add|update|delete) ADDRESS CN"
+  end
+
+  operation, address, cn = ARGV
+  begin
+    private_ip = IPAddr.new(address)
+  rescue IPAddr::InvalidAddressError => e
+    abort "error parsing address '#{address}': #{e}"
+  end
+  public_ip = ENV["trusted_ip"] || ENV["trusted_ip6"]
+
+  nsupdate = Nsupdate.new(config)
+  case operation
+  when "add", "update"
+    nsupdate.add_record(private_ip, public_ip, cn)
+  when "delete"
+    nsupdate.remove_record(private_ip, public_ip, cn)
+  else
+    abort "unknown operation #{operation}"
+  end
+rescue SystemExit
+  # abort was called, no need for logging
+rescue Exception => e
+  # log exception without exit != 0
+  puts "#{e.class}: #{e}"
+  print e.backtrace.join("\n")
+ensure
+  exit 0
+end
+
+main
