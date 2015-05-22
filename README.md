@@ -18,7 +18,7 @@ Maintain dns records for connecting openvpn clients
 
 ```
 $ cd /etc/openvpn
-$ git clone git.github.com/Mic92/openvpn-ddns ddns
+$ git clone https://github.com/Mic92/openvpn-ddns.git ddns
 ```
 
 3. Edit Configuration
