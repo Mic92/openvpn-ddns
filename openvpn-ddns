@@ -102,7 +102,7 @@ class Nsupdate
       ["server #{@config.name_server}"] +
       private_key +
       transaction +
-      ["send"]
+      ["quit"]
     )
   end
 
@@ -117,6 +117,7 @@ class Nsupdate
       if add
         transaction << "update add #{domain}. 3600 #{rtype(ip)} #{ip.to_string}"
       end
+      transaction << "send"
     end
     transaction
   end
@@ -132,6 +133,7 @@ class Nsupdate
       if add
         transaction << "update add #{ip.reverse}. 3600 PTR #{common_name}"
       end
+      transaction << "send"
     end
     transaction
   end
