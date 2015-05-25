@@ -184,21 +184,14 @@ class Nsupdate
   end
 
   def nsupdate(zone)
-    file = Tempfile.new('nsupdate')
-
     cmd = [@config.nsupdate_executable || "nsupdate"]
-
-    file.puts(zone.join("\n"))
-    file.close
-
-    cmd << file.path
-    puts(cmd.join(" "))
+    puts("$ #{cmd.join(" ")} <<'EOF'")
     puts(zone.join("\n"))
-    system(cmd)
-  rescue
-    unless file.nil?
-      file.close
-      file.unlink
+    puts("'EOF'")
+    IO.popen(cmd, "r+") do |io|
+      io.write(zone.join("\n"))
+      io.close_write
+      puts(io.read)
     end
   end
 end
