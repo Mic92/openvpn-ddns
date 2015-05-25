@@ -172,7 +172,7 @@ class Nsupdate
   def normalize(s)
     # remove leading/trailing dots
     # remove characters not allowed in fqdn
-    s.gsub(/^\.|\.$|[^a-zA-Z\-.]+/, "")
+    s.gsub(/^\.|\.$|[^a-zA-Z0-9\-.]+/, "")
   end
 
   def rtype(ip)
