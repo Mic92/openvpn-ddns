@@ -238,11 +238,14 @@ def main
 
   operation, address, cn = ARGV
   begin
-    private_ip = IPAddr.new(address)
+    private_ip = IPAddr.new(address).native
   rescue IPAddr::InvalidAddressError => e
     abort "error parsing address '#{address}': #{e}"
   end
   public_ip = ENV["trusted_ip"] || ENV["trusted_ip6"]
+  if public_ip
+    public_ip = IPAddr.new(public_ip).native
+  end
 
   nsupdate = Nsupdate.new(config)
   case operation
