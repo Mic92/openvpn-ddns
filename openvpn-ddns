@@ -16,7 +16,7 @@ class Configuration
     abort "'nsupdate' should be an object" unless data.is_a? Hash
     @name_server   = assert_type(data, "name_server", String) or
       abort "no 'name_server' specified in configuration"
-    @private_key_file      = assert_type(data, "private_key_file", String)
+    @private_key           = assert_type(data, "private_key", String)
     @public_zones          = assert_type(data, "public_zones", Array) || []
     @private_zones         = assert_type(data, "private_zones", Array) || []
     @public_search_domain  = assert_type(data, "public_search_domain", String)
@@ -46,7 +46,7 @@ class Configuration
     val
   end
   attr_reader :name_server,
-    :private_key_file,
+    :private_key,
     :nsupdate_executable,
     :private_zones,
     :public_zones,
@@ -90,10 +90,17 @@ class Nsupdate
       transaction += reverse_entry(public_ip, common_name, add)
     end
 
+    private_key = if @config.private_key
+                    ["key #{@config.private_key}"]
+                  else
+                    []
+                  end
+
     return if transaction.empty?
 
     nsupdate(
       ["server #{@config.name_server}"] +
+      private_key +
       transaction +
       ["send"]
     )
@@ -178,10 +185,6 @@ class Nsupdate
     file = Tempfile.new('nsupdate')
 
     cmd = [@config.nsupdate_executable || "nsupdate"]
-
-    if @config.private_key_file
-      cmd += ["-k", @config.private_key_file]
-    end
 
     file.puts(zone.join("\n"))
     file.close

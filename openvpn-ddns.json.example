@@ -2,7 +2,7 @@
   "nsupdate" : {
     "name_server": "ns.domain.tld",
     "nsupdate_executable": "nsupdate",
-    "private_key_file": "/etc/openvpn/nsupdate.key",
+    "private_key": "hmac-sha512:ddns-update-key NTc1ODVmNDk5NzgwMDgyODQ2ZTAzMGNlZmI0YTkwN2M5ZTg1MzNiN2UxMWQyNjZhNjg2YWQ1MDc4Y2NlZjU0Mw==",
     "reverse_zones": [
       "1.168.192.in-addr.arpa",
       "0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.8.3.2.8.0.c.8.7.8.8.d.f.ip6.arpa"
