@@ -46,9 +46,9 @@ the configuration takes the following following keys:
 
 - **name_server** (string, required): hostname or ip address to nameserver                                                        |
 - **nsupdate_executable** (string, optional): path or name of nsupdate (Defaults to "nsupdate")                                           |
-- **private_key** (string, optional): If set, this will be used by nsupdate to authenticate against nameserver, use the format `algorithm:keyname key`,
- for example `hmac-sha512:ddns-key NTc1ODVmNDk5NzgwMDgyODQ2ZTAzMGNlZmI0YTkwN2M5ZTg1MzNiN2UxMWQyNjZhNjg2YWQ1MDc4Y2NlZjU0Mw==`,
- where `keyname` is the name used in nameserver configuration and `algorithm` the used TSIG key algorithm
+- **private_key** (string, optional): If set, this will be used by nsupdate to authenticate against nameserver, use the format `algorithm:keyname key`, where `keyname` is the name used in nameserver configuration and `algorithm` the used TSIG key algorithm.
+ for example:
+ - `hmac-sha512:ddns-key NTc1ODVmNDk5NzgwMDgyODQ2ZTAzMGNlZmI0YTkwN2M5ZTg1MzNiN2UxMWQyNjZhNjg2YWQ1MDc4Y2NlZjU0Mw==`
 - **reverse_zones** (array, optional): list of reverse zones, which are matched against public/private openvpn client ip.
  If the ip is contained in one of the provided reverse zones, the PTR records will be updated using the common_name as value.
 - **private_zones** (array, optional) list of zones, which are matched against the common_name field of the client certificate.
