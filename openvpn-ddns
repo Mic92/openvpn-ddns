@@ -4,6 +4,11 @@ require 'json'
 require 'tempfile'
 require 'ipaddr'
 
+def subnet_size(ipaddr)
+  range = ipaddr.to_range
+  Math.log2((range.last.to_i - range.first.to_i + 1))
+end
+
 class Configuration
   def initialize(config_file)
     begin
@@ -21,21 +26,14 @@ class Configuration
     @private_zones         = assert_type(data, "private_zones", Array) || []
     @public_search_domain  = assert_type(data, "public_search_domain", String)
     @private_search_domain = assert_type(data, "private_search_domain", String)
-    reverse_zones          = assert_type(data, "reverse_zones", Array) || []
+    reverse_zones          = assert_type(data, "reverse_zones", Hash) || {}
     @nsupdate_executable   = assert_type(data, "nsupdate_executable", String)
 
-    @v4_reverse_zones = []
-    @v6_reverse_zones = []
-
-    reverse_zones.each do |zone|
-      if zone.end_with?("in-addr.arpa")
-        @v4_reverse_zones << zone
-      elsif zone.end_with?("ip6.arpa")
-        @v6_reverse_zones << zone
-      else
-        abort "invalid reverse zone #{zone}"
-      end
+    @reverse_zones = {}
+    reverse_zones.each do |subnet, zone|
+      @reverse_zones[IPAddr.new(subnet)] = zone
     end
+    @reverse_zones.sort_by { |subnet, zone| subnet_size(subnet) }
   end
 
   def assert_type(data, key, type)
@@ -52,8 +50,7 @@ class Configuration
     :public_zones,
     :private_search_domain,
     :public_search_domain,
-    :v4_reverse_zones,
-    :v6_reverse_zones
+    :reverse_zones
 end
 
 class Nsupdate
@@ -125,13 +122,21 @@ class Nsupdate
   def reverse_entry(ip, common_name, add)
     transaction = []
 
-    reverse_zone = find_reverse_zone(ip)
+    subnet_size, reverse_zone = find_reverse_zone(ip)
     unless reverse_zone.nil?
       transaction << "zone #{reverse_zone}"
-      transaction << "update delete #{ip.reverse}. PTR"
+      host_part = if ip.ipv4?
+        (subnet_size / 8).ceil
+      else
+        (subnet_size / 4).ceil
+      end
+      host_digits = [host_part, 1].max
+      host_part = ip.reverse[/^([0-9a-fA-F]+\.){#{host_digets}}/]
+
+      transaction << "update delete #{host_part}#{reverse_zone}. PTR"
 
       if add
-        transaction << "update add #{ip.reverse}. 3600 PTR #{common_name}"
+        transaction << "update add #{host_part}#{reverse_zone}. 3600 PTR #{common_name}"
       end
       transaction << "send"
     end
@@ -139,18 +144,10 @@ class Nsupdate
   end
 
   def find_reverse_zone(ip)
-    reverse_zones = if ip.ipv4?
-                      @config.v4_reverse_zones
-                    else
-                      @config.v6_reverse_zones
-                    end
-
-    reverse_zones.each do |zone|
-      if ip.reverse.end_with?(zone)
-        return zone
-      end
+    @config.reverse_zones.each do |subnet, zone|
+      return [subnet_size(subnet), zone] if subnet.include?(ip)
     end
-    nil
+    [nil, nil]
   end
 
   def find_zone(name, zones, search_domain)

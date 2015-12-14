@@ -3,17 +3,13 @@
     "name_server": "ns.domain.tld",
     "nsupdate_executable": "nsupdate",
     "private_key": "hmac-sha512:ddns-update-key NTc1ODVmNDk5NzgwMDgyODQ2ZTAzMGNlZmI0YTkwN2M5ZTg1MzNiN2UxMWQyNjZhNjg2YWQ1MDc4Y2NlZjU0Mw==",
-    "reverse_zones": [
-      "1.168.192.in-addr.arpa",
-      "0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.8.3.2.8.0.c.8.7.8.8.d.f.ip6.arpa"
-    ],
+    "reverse_zones": {
+      "192.168.1.0/27": "1-31.168.192.in-addr.arpa",
+      "fd35:c2f2:fea9::/48": "0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.9.a.e.f.2.f.2.c.5.3.d.f.ip6.arpa"
+    },
     "public_search_domain": "hosts.domain.tld",
-    "public_zones": [
-      "no-ip.domain.tld"
-    ],
+    "public_zones": [ "no-ip.domain.tld" ],
     "private_search_domain": "hosts2.domain.tld",
-    "privat_zones": [
-      "vpn.domain.tld"
-    ]
+    "privat_zones": [ "vpn.domain.tld" ]
   }
 }

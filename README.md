@@ -58,9 +58,10 @@ the configuration takes the following following keys:
   - If set, this will be used by nsupdate to authenticate against nameserver, use the format `algorithm:keyname key`, where `keyname` is the name used in nameserver configuration and `algorithm` the used TSIG key algorithm.
   - example: `hmac-sha512:ddns-key NTc1ODVmNDk5NzgwMDgyODQ2ZTAzMGNlZmI0YTkwN2M5ZTg1MzNiN2UxMWQyNjZhNjg2YWQ1MDc4Y2NlZjU0Mw==`
 - **reverse_zones**
-  - array
+  - object/hash
   - optional
-  - list of reverse zones, which are matched against public/private openvpn client ip.
+  - key is the subnet and value is the associated reverse zone. 
+    public/private openvpn client ip is matched against these subnets.
     If the ip is contained in one of the provided reverse zones, 
     the PTR records will be updated using the common_name as value.
 - **private_zones**:
@@ -68,7 +69,7 @@ the configuration takes the following following keys:
   - optional
   - list of zones, which are matched against the common_name field of the client certificate.
     If one zone is a suffix of the common_name, 
-    a A or AAAA records are updated using the internal ip address as value.
+t    a A or AAAA records are updated using the internal ip address as value.
 - **private_search_domain**
   - string
   - optional
