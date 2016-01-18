@@ -142,7 +142,8 @@ class Nsupdate
         (subnet_size / 4).ceil
       end
       host_digits = [host_part, 1].max
-      host_part = ip.reverse[/^([0-9a-fA-F]+\.){#{host_digets}}/]
+      host_part = ip.reverse[/^([0-9a-fA-F]+\.){#{host_digits}}/]
+      reverse_zone.strip!
 
       transaction << "update delete #{host_part}#{reverse_zone}. PTR"
 
