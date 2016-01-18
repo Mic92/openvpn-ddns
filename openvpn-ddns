@@ -68,6 +68,15 @@ class Nsupdate
 
   private
 
+  def reverse_name(common_name, search_domain)
+      if common_name =~ /[^.]+/
+        # if common_name is a hostname append the search domain
+        "#{common_name}.#{search_domain}"
+      else
+        common_name
+      end
+  end
+
   def change_record(private_ip, public_ip, common_name, add)
     transaction = []
 
@@ -76,7 +85,8 @@ class Nsupdate
                                  @config.private_zones,
                                  @config.private_search_domain,
                                  add)
-    transaction += reverse_entry(private_ip, common_name, add)
+    name = reverse_name(common_name, @config.private_search_domain)
+    transaction += reverse_entry(private_ip, name, add)
 
     if public_ip
       transaction += forward_entry(public_ip,
@@ -84,7 +94,8 @@ class Nsupdate
                                    @config.public_zones,
                                    @config.public_search_domain,
                                    add)
-      transaction += reverse_entry(public_ip, common_name, add)
+      name = reverse_name(common_name, @config.public_search_domain)
+      transaction += reverse_entry(public_ip, name, add)
     end
 
     private_key = if @config.private_key
