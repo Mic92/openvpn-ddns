@@ -4,17 +4,17 @@ Maintain dns records for connecting openvpn clients
 
 # Features
 
-- generate PTR/AAAA/A records using `common_name` of the client certifcate
-  and both internal or external ip addresses using `nsupdate`
+- generate PTR/AAAA/A records using `common_name` of the client certificate
+  and both internal or external IP addresses using `nsupdate`
 - support for private key
 - supports multiple forward and reverse zones and
-  pick the first matching ip address or `common_name`
+  pick the first matching IP address or `common_name`
 
 # Usage
 
-The following text assumes, that an openvpn server with client certificates,
+The following text assumes an openvpn server with client certificates,
 as described in the [openvpn documentation](https://openvpn.net/index.php/open-source/documentation/miscellaneous/77-rsa-key-management.html)
-and a nameserver which supports update via nsupdate such as [bind](https://www.isc.org/downloads/bind/).
+and a name server which supports update via nsupdate such as [bind](https://www.isc.org/downloads/bind/).
 
 1. Install Ruby and nsupdate
 
@@ -47,7 +47,7 @@ the configuration takes the following following keys:
 - **name_server**: 
   - string
   - required
-  - hostname or ip address to nameserver                                                        |
+  - hostname or IP address to name server                                                        |
 - **nsupdate_executable**:
   - string
   - optional
@@ -55,21 +55,21 @@ the configuration takes the following following keys:
 - **private_key**: 
   - string
   - optional
-  - If set, this will be used by nsupdate to authenticate against nameserver, use the format `algorithm:keyname key`, where `keyname` is the name used in nameserver configuration and `algorithm` the used TSIG key algorithm.
+  - If set, this will be used by nsupdate to authenticate against name server, use the format `algorithm:keyname key`, where `keyname` is the name used in name server configuration and `algorithm` the used TSIG key algorithm.
   - example: `hmac-sha512:ddns-key NTc1ODVmNDk5NzgwMDgyODQ2ZTAzMGNlZmI0YTkwN2M5ZTg1MzNiN2UxMWQyNjZhNjg2YWQ1MDc4Y2NlZjU0Mw==`
 - **reverse_zones**
   - object/hash
   - optional
   - key is the subnet and value is the associated reverse zone. 
-    public/private openvpn client ip is matched against these subnets.
-    If the ip is contained in one of the provided reverse zones, 
+    public/private openvpn client IP is matched against these subnets.
+    If the IP is contained in one of the provided reverse zones, 
     the PTR records will be updated using the common_name as value.
 - **private_zones**:
   - array
   - optional
   - list of zones, which are matched against the common_name field of the client certificate.
     If one zone is a suffix of the common_name, 
-t    a A or AAAA records are updated using the internal ip address as value.
+t    a A or AAAA records are updated using the internal IP address as value.
 - **private_search_domain**
   - string
   - optional
@@ -80,7 +80,7 @@ t    a A or AAAA records are updated using the internal ip address as value.
   - optional
   - list of zones, which are matched against the common_name field of the client certificate.
     If one zone is a suffix of the common_name, 
-    a A or AAAA records are updated using the public ip address asvalue.
+    a A or AAAA records are updated using the public IP address as value.
 - **public_search_domain**
   - string
   - optional
