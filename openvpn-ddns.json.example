@@ -10,6 +10,6 @@
     "public_search_domain": "hosts.domain.tld",
     "public_zones": [ "no-ip.domain.tld" ],
     "private_search_domain": "hosts2.domain.tld",
-    "privat_zones": [ "vpn.domain.tld" ]
+    "private_zones": [ "vpn.domain.tld" ]
   }
 }
